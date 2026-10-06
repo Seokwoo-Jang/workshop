@@ -10,6 +10,7 @@ import Invite from './Invite';
 import LiveAdmin from './LiveAdmin';
 import ShootAdmin from './ShootAdmin';
 import PrizeAdmin from './PrizeAdmin';
+import BudgetAdmin from './BudgetAdmin';
 
 export default function AdminPanel({ sess, room, seats, people, schedule, scores, live, reload, onClose, onAdminExpired, onResetAll }) {
   const [dialog, ask] = useConfirm();
@@ -47,6 +48,7 @@ export default function AdminPanel({ sess, room, seats, people, schedule, scores
         <PeopleAdmin {...{ seats, people }} />
         <ScheduleAdmin {...{ A, schedule, run, ask }} />
         <AlbumAdmin {...{ A, room, run }} />
+        <BudgetAdmin {...{ A, run, ask }} />
         <ResetAll {...{ A, ask, onAdminExpired, onResetAll }} />
       </main>
       {dialog}
@@ -264,7 +266,7 @@ function ResetAll({ A, ask, onAdminExpired, onResetAll }) {
 
   const reset = async () => {
     setErr('');
-    if (!(await ask('전체 초기화하시겠습니까?\n참가자, 좌석 예약, 운영석이 모두 지워지고 되돌릴 수 없습니다.\n일정, 앨범 링크, 오픈 시각, 경품 이름, PIN은 유지됩니다.', '전체 초기화', true))) return;
+    if (!(await ask('전체 초기화하시겠습니까?\n참가자, 좌석 예약, 운영석이 모두 지워지고 되돌릴 수 없습니다.\n일정, 앨범 링크, 오픈 시각, 경품 이름, 예산, PIN은 유지됩니다.', '전체 초기화', true))) return;
     try {
       const r = await rpc('admin_reset_all', { p_admin: A, p_pin: pin });
       if (r.status !== 'ok') { setErr('PIN이 맞지 않습니다'); setPin(''); return; }
@@ -278,7 +280,7 @@ function ResetAll({ A, ask, onAdminExpired, onResetAll }) {
   return (
     <section className="panel">
       <h3>전체 초기화</h3>
-      <p className="hint">리허설이 끝나고 실제 행사 전에 사용하세요 (일정·경품 이름 유지). 관리자 본인도 다시 이름을 입력해야 합니다.</p>
+      <p className="hint">리허설이 끝나고 실제 행사 전에 사용하세요 (일정·경품 이름·예산 유지). 관리자 본인도 다시 이름을 입력해야 합니다.</p>
       <input className="input" type="password" inputMode="numeric" placeholder="관리자 PIN" maxLength={8}
         value={pin} onChange={e => setPin(e.target.value.replace(/\D/g, ''))} />
       {err && <p className="err">{err}</p>}
