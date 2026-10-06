@@ -190,7 +190,7 @@ function Board({ b, meta, names, inv, me, fin, ended, laneRef, headRef, underRef
       {inv.map((_, c) => { // 도착 칸 c의 순위 j (slot 없으면 왼쪽부터 1위)
         const j = meta.slot ? meta.slot[c] : c, p = meta.ranking[j];
         const x = g.x(c), y = round(g.flapTop(c)), isFin = j >= n - fin;
-        const tag = isFin ? '⚡FINAL' : `${j + 1}위`;
+        const tag = isFin ? '⚡FINAL' : fin === 0 ? `${j + 1}번째` : `${j + 1}위`; // FINAL 없음 = 순서 (출발 번호 'N번'과 구분)
         return (
           <g key={c} className={`ladder-flap${isFin ? ' fin' : ''}${ended && p === me ? ' me' : ''}`}>
             <rect x={round(x - fw / 2)} y={y} width={round(fw)} height={FLAP_HEIGHT} rx="6" style={ended ? { stroke: hue(p) } : undefined} />

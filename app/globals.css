@@ -532,3 +532,7 @@ details.panel summary { font-weight: 700; cursor: pointer; }
 .budget-table tfoot td { font-weight: 800; border-top: 2px solid var(--ink); border-bottom: 0; }
 .budget-table input[type='checkbox'] { width: 20px; height: 20px; margin: 0; accent-color: var(--sea); }
 .budget-name { all: unset; cursor: pointer; font-weight: 700; color: var(--sea); text-decoration: underline; text-underline-offset: 3px; }
+
+/* ── 🎯 사격 순서 (관리자 점수 입력) ── */
+.shoot-no { min-width: 24px; text-align: right; font-weight: 800; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.admin-list li.next { background: var(--sun-soft); border-radius: var(--r-s); padding-left: 6px; padding-right: 6px; }

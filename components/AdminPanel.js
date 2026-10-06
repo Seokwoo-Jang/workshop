@@ -38,7 +38,7 @@ export default function AdminPanel({ sess, room, seats, people, schedule, scores
       </header>
       <main className="wrap body stack" style={{ paddingTop: 16 }}>
         <LiveAdmin {...{ A, sess, room, people, live, ask, reload, onAdminExpired }} />
-        <ShootAdmin {...{ A, room, people, scores, run }} />
+        <ShootAdmin {...{ A, room, people, scores, run, live }} />
         <PrizeAdmin {...{ A, room, run }} />
         <section className="panel">
           <h3>초대</h3>

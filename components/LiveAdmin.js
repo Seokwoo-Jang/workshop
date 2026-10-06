@@ -47,7 +47,7 @@ export default function LiveAdmin({ A, sess, room, people, live, ask, reload, on
     const n = players.length;
     const opts = optsFor(n);
     const names = players.map(p => p.name);
-    const fl = opts.prizes ? '🏆 FINAL 백업 시상' : opts.final ? `하위 ${opts.final}명 FINAL 진출` : '';
+    const fl = opts.prizes ? '🏆 FINAL 백업 시상' : opts.final ? `하위 ${opts.final}명 FINAL 진출` : 'FINAL 없음 · 전체 순서';
     const extra = game === 'marble' ? `\n${fl ? `${fl} · ` : ''}${MAPS[map].title}`
       : game === 'ladder' ? `${fl ? `\n${fl}` : ''}\n참가자가 각자 폰에서 출발 번호를 고릅니다 (마감 때 남은 번호는 무작위)`
       : game === 'wheel' ? ''
@@ -146,6 +146,12 @@ export default function LiveAdmin({ A, sess, room, people, live, ask, reload, on
           </div>
         </div>
       )}
+      {game === 'ladder' && ( // 🎯 사격 전 순서 정하기 = FINAL 0 (전체 순서) · 2단계 백업 = FINAL 3
+        <div className="row">
+          <button className={`btn small ${final === 0 && !prizes ? 'primary' : 'ghost'}`} onClick={() => { setFinal(0); setPrizes(false); }}>🎯 사격 순서</button>
+          <button className={`btn small ${final === 3 && !prizes ? 'primary' : 'ghost'}`} onClick={() => { setFinal(3); setPrizes(false); }}>🎁 2단계 백업</button>
+        </div>
+      )}
       {(game === 'marble' || game === 'ladder') && <p className="hint">FINAL 인원: {game === 'marble' ? '마지막에 도착한' : '사다리 ⚡FINAL 칸에 도착한'} N명이 FINAL 진출 (0이면 전체 순위)</p>}
       {(game === 'marble' || game === 'ladder') && (
         <label className="check">
@@ -172,15 +178,16 @@ function DrawTurn({ A, round, fail }) {
   const name = Object.fromEntries(round.players.map(p => [p.id, p.name]));
   const picks = round.result.slice(0, round.result.length - (round.opts?.final || 0));
   const t = round.turn;
+  const order = !round.opts?.final; // FINAL 없음 = 순서 정하기 (사격 순서 등)
   const set = v => rpc('admin_draw_turn', { p_admin: A, p_round: round.id, p_turn: v }).catch(fail);
 
   if (t === null || t === undefined) {
-    return <button className="btn sun" onClick={() => set(0)}>📢 선택 순번 안내 시작</button>;
+    return <button className="btn sun" onClick={() => set(0)}>{order ? '📢 순서 안내 시작' : '📢 선택 순번 안내 시작'}</button>;
   }
   return (
     <div className="stack">
       <p className="turn">
-        {t < picks.length ? <>지금 차례: <b>{name[picks[t]]}</b> ({t + 1} / {picks.length})</> : '✅ 선택 완료'}
+        {t < picks.length ? <>지금 차례: <b>{name[picks[t]]}</b> ({t + 1} / {picks.length})</> : order ? '✅ 순서 안내 완료' : '✅ 선택 완료'}
       </p>
       <div className="row">
         <button className="btn ghost" disabled={t <= 0} onClick={() => set(t - 1)}>◀ 이전</button>

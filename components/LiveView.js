@@ -105,10 +105,10 @@ export function RankResult({ round, meId, room, practice }) {
         <div className="turn" aria-live="polite">
           {turn < picks.length ? (
             <>📢 지금 차례: <b>{name[picks[turn]]}</b>{picks[turn + 1] && <> → 다음: {name[picks[turn + 1]]}</>}</>
-          ) : '✅ 자유 선택 상품 선택 완료'}
+          ) : fin ? '✅ 자유 선택 상품 선택 완료' : '✅ 순서 안내 완료'}
         </div>
       )}
-      <h3>{practice ? '연습 결과 (무효)' : fin ? '🎁 자유 선택 상품 순번' : '🏁 최종 순위'}</h3>
+      <h3>{practice ? '연습 결과 (무효)' : fin ? '🎁 자유 선택 상품 순번' : round.game_type === 'ladder' ? '🔢 순서 (1번째부터)' : '🏁 최종 순위'}</h3>
       <ol className="ranks">
         {picks.map((id, i) => (
           <li key={id} className={`${id === meId ? 'me' : ''} ${guiding && i === turn ? 'cur' : ''} ${guiding && i < turn ? 'done' : ''}`}>
