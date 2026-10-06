@@ -83,7 +83,12 @@ export default function ReactionPlayer({ round, sess }) {
   const ready = async () => {
     setBusy(true); setFlash(null);
     try {
-      const r = await rpc('reaction_ready', { p_token: sess.token, p_round: round.id });
+      const args = { p_token: sess.token, p_round: round.id };
+      let r = await rpc('reaction_ready', args);
+      if (done.current.has(r.trial_id) && !readPending()) { // 앱 이탈 무효가 서버에 안 닿아 같은 판이 남음 → 무효 후 새 판
+        await rpc('reaction_void', { ...args, p_trial: r.trial_id, p_reason: 'leave' });
+        r = await rpc('reaction_ready', args);
+      }
       start({ key: r.trial_id, delay_ms: r.delay_ms, trial_no: r.trial_no });
     } catch (e) { setFlash(e.message); }
     setBusy(false);
