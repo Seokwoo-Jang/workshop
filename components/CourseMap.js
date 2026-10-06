@@ -66,7 +66,6 @@ export default function CourseMap() {
               {c.legs.map((l, i) => <Leg key={i} {...l} color={c.color} />)}
             </g>
           ))}
-          {FINALE.legs.map((l, i) => <Leg key={i} {...l} color={FINALE.color} />)}
           {TEXTS.map(t => <text key={t.t} className="course-text" x={t.x} y={t.y}>{t.t}</text>)}
           {BADGES.map((b, i) => (
             <g key={i} transform={`translate(${b.x} ${b.y})`} opacity={[...b.on].some(on) ? 1 : 0.3}>
@@ -95,7 +94,7 @@ export default function CourseMap() {
           ))}
         </ul>
       )}
-      <p className="course-title" style={{ '--c': FINALE.color }}><i>✓</i> 다 같이 · 17:00 집결 이후</p>
+      <p className="course-title" style={{ '--c': FINALE.color }}><i>✓</i> {FINALE.title}</p>
       <Steps steps={FINALE.steps} color={FINALE.color} />
       <p className="hint">{NOTE}</p>
     </div>
