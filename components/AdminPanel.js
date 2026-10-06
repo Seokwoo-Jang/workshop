@@ -4,10 +4,12 @@ import { rpc, sb } from '@/lib/supabase';
 import { ROOM } from '@/lib/session';
 import { fmtOpen, fromInputKST, serverNow, toInputKST } from '@/lib/time';
 import { toast, useConfirm } from '@/lib/ui';
+import { fmtLinks, parseLinks } from '@/lib/courses';
 import SeatMap from './SeatMap';
 import Invite from './Invite';
 import LiveAdmin from './LiveAdmin';
 import ShootAdmin from './ShootAdmin';
+import PrizeAdmin from './PrizeAdmin';
 
 export default function AdminPanel({ sess, room, seats, people, schedule, scores, live, reload, onClose, onAdminExpired, onResetAll }) {
   const [dialog, ask] = useConfirm();
@@ -36,6 +38,7 @@ export default function AdminPanel({ sess, room, seats, people, schedule, scores
       <main className="wrap body stack" style={{ paddingTop: 16 }}>
         <LiveAdmin {...{ A, sess, room, people, live, ask, reload, onAdminExpired }} />
         <ShootAdmin {...{ A, room, people, scores, run }} />
+        <PrizeAdmin {...{ A, room, run }} />
         <section className="panel">
           <h3>초대</h3>
           <Invite />
@@ -179,7 +182,7 @@ function PeopleAdmin({ seats, people }) {
 }
 
 // ───────────────────────── 일정
-const BLANK = { id: null, hhmm: '', icon: '', title: '', place: '', note: '' };
+const BLANK = { id: null, hhmm: '', icon: '', title: '', place: '', note: '', detail: '', links: '', widget: '' }; // links: '라벨 | URL' 줄
 
 function ScheduleAdmin({ A, schedule, run, ask }) {
   const [f, setF] = useState(BLANK);
@@ -187,9 +190,14 @@ function ScheduleAdmin({ A, schedule, run, ask }) {
   const items = [...schedule].sort((a, b) => a.hhmm.localeCompare(b.hhmm));
 
   const save = () => run(async () => {
-    await rpc('admin_upsert_schedule', {
-      p_admin: A, p_id: f.id, p_time: f.hhmm, p_icon: f.icon, p_title: f.title, p_place: f.place, p_note: f.note,
-    });
+    const links = parseLinks(f.links);
+    const old = schedule.find(it => it.id === f.id);
+    const args = { p_admin: A, p_id: f.id, p_time: f.hhmm, p_icon: f.icon, p_title: f.title, p_place: f.place, p_note: f.note };
+    // 상세·링크·위젯이 비어 있고 원래도 없으면 생략 → migrate 전 7인자 함수와도 맞음 (생략 시 서버는 기존 값 유지)
+    if (f.detail || links.length || f.widget || old?.detail || old?.links?.length || old?.widget) {
+      Object.assign(args, { p_detail: f.detail, p_links: links, p_widget: f.widget });
+    }
+    await rpc('admin_upsert_schedule', args);
     setF(BLANK);
   }, f.id ? '일정을 수정했습니다' : '일정을 추가했습니다', ['schedule']);
 
@@ -205,7 +213,7 @@ function ScheduleAdmin({ A, schedule, run, ask }) {
         {items.map(it => (
           <li key={it.id}>
             <span className="grow">{it.hhmm} {it.icon} {it.title}</span>
-            <button className="btn ghost small" onClick={() => setF(it)}>수정</button>
+            <button className="btn ghost small" onClick={() => setF({ ...BLANK, ...it, links: fmtLinks(it.links) })}>수정</button>
             <button className="btn ghost small" onClick={() => del(it)}>삭제</button>
           </li>
         ))}
@@ -219,6 +227,13 @@ function ScheduleAdmin({ A, schedule, run, ask }) {
         <input className="input" placeholder="일정 (예: 클레이사격)" value={f.title} onChange={set('title')} aria-label="일정" />
         <input className="input" placeholder="장소 (선택)" value={f.place} onChange={set('place')} aria-label="장소" />
         <input className="input" placeholder="공지 (선택)" value={f.note} onChange={set('note')} aria-label="공지" />
+        <textarea className="input" rows={3} placeholder="상세 내용 (선택, 일정을 누르면 펼쳐짐)" value={f.detail} onChange={set('detail')} aria-label="상세 내용" />
+        <textarea className="input" rows={2} placeholder={'지도 링크 (선택)\n서서갈비 | https://naver.me/...'} value={f.links} onChange={set('links')} aria-label="지도 링크" />
+        <p className="hint">지도 링크: 한 줄에 하나씩 '라벨 | 주소' (최대 4개)</p>
+        <label className="check">
+          <input type="checkbox" checked={f.widget === 'courses'} onChange={e => setF({ ...f, widget: e.target.checked ? 'courses' : '' })} />
+          🗺 제부도 추천코스 지도 표시
+        </label>
         <div className="row">
           {f.id && <button className="btn ghost" onClick={() => setF(BLANK)}>수정 취소</button>}
           <button className="btn primary" onClick={save}>{f.id ? '수정 저장' : '일정 추가'}</button>
@@ -249,7 +264,7 @@ function ResetAll({ A, ask, onAdminExpired, onResetAll }) {
 
   const reset = async () => {
     setErr('');
-    if (!(await ask('전체 초기화하시겠습니까?\n참가자, 좌석 예약, 운영석이 모두 지워지고 되돌릴 수 없습니다.\n일정, 앨범 링크, 오픈 시각, PIN은 유지됩니다.', '전체 초기화', true))) return;
+    if (!(await ask('전체 초기화하시겠습니까?\n참가자, 좌석 예약, 운영석이 모두 지워지고 되돌릴 수 없습니다.\n일정, 앨범 링크, 오픈 시각, 경품 이름, PIN은 유지됩니다.', '전체 초기화', true))) return;
     try {
       const r = await rpc('admin_reset_all', { p_admin: A, p_pin: pin });
       if (r.status !== 'ok') { setErr('PIN이 맞지 않습니다'); setPin(''); return; }
@@ -263,7 +278,7 @@ function ResetAll({ A, ask, onAdminExpired, onResetAll }) {
   return (
     <section className="panel">
       <h3>전체 초기화</h3>
-      <p className="hint">리허설이 끝나고 실제 행사 전에 사용하세요. 관리자 본인도 다시 이름을 입력해야 합니다.</p>
+      <p className="hint">리허설이 끝나고 실제 행사 전에 사용하세요 (일정·경품 이름 유지). 관리자 본인도 다시 이름을 입력해야 합니다.</p>
       <input className="input" type="password" inputMode="numeric" placeholder="관리자 PIN" maxLength={8}
         value={pin} onChange={e => setPin(e.target.value.replace(/\D/g, ''))} />
       {err && <p className="err">{err}</p>}

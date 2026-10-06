@@ -430,3 +430,84 @@ details.panel summary { font-weight: 700; cursor: pointer; }
   .sheet { animation: up .18s ease-out; }
   @keyframes up { from { transform: translateY(24px); opacity: .6; } }
 }
+
+/* ── 🪜 사다리 번호 고르기 (LIVE) ── */
+.lane-head { display: grid; gap: 2px; text-align: center; }
+.lane-count { margin: 0; font-size: 15px; font-weight: 700; color: var(--ink-2); }
+.lane-count b { font-size: 22px; color: var(--sea); font-variant-numeric: tabular-nums; }
+.lane-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 8px; }
+.lane-btn {
+  display: grid; justify-items: center; align-content: center; gap: 2px; min-width: 0; min-height: 68px; padding: 6px 4px;
+  border: 2px solid var(--sea); border-radius: var(--r-s); background: var(--paper);
+}
+.lane-btn b { font-size: 24px; line-height: 1.1; font-weight: 900; color: var(--sea); font-variant-numeric: tabular-nums; }
+.lane-btn small { max-width: 100%; font-size: 12px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lane-btn.taken { border-color: var(--taken); background: var(--taken); }
+.lane-btn.taken b { color: var(--ink-2); }
+.lane-btn.taken small { color: var(--ink); font-weight: 700; }
+.lane-btn.mine { border-color: var(--sun); background: var(--sun); box-shadow: 0 0 0 3px var(--sun-soft); }
+.lane-btn.mine b, .lane-btn.mine small { color: var(--ink); font-weight: 800; }
+.lane-btn:disabled { cursor: default; }
+.lane-btn:disabled:not(.taken) { border-color: var(--line); }
+.lane-btn:disabled:not(.taken) b { color: var(--ink-2); }
+.lane-cover {
+  display: grid; place-items: center; align-content: center; gap: 4px; min-height: 120px; border-radius: var(--r-l);
+  border: 2px dashed var(--line); background: repeating-linear-gradient(-45deg, var(--mist) 0 10px, var(--paper) 10px 20px);
+  color: var(--ink-2); font-size: 13px; font-weight: 700;
+}
+.lane-cover b { font-size: 44px; line-height: 1; color: var(--sea); }
+.lane-mine { margin: 0; font-size: 17px; font-weight: 700; }
+.lane-mine b { font-size: 28px; color: var(--sea); }
+.lane-sel { width: 132px; flex: none; min-height: 40px; padding: 6px 8px; } /* 16px 유지: iOS 확대 방지 */
+.ladder-svg .ladder-no { fill: var(--sea); font-size: 12px; font-weight: 900; }
+
+/* ── 일정 상세 · 제부도 추천코스 지도 ── */
+.sched .what, .sched .meta { display: block; }
+.sched-row {
+  grid-column: 1 / -1; display: grid; grid-template-columns: 48px 22px 1fr 16px; gap: 0 10px; align-items: start;
+  width: 100%; min-height: 44px; padding: 0; border: 0; background: none; text-align: left;
+}
+.sched-chev { color: var(--ink-2); font-size: 14px; padding-top: 2px; transition: transform .2s; }
+.sched-row[aria-expanded='true'] .sched-chev { transform: rotate(180deg); }
+.sched-more { /* 타임라인 선 위로, 전체 폭 */
+  grid-column: 1 / -1; position: relative; z-index: 1; margin-top: 10px;
+  background: var(--paper); border-radius: var(--r-s); padding: 12px; display: grid; gap: 10px;
+}
+.sched-detail { margin: 0; white-space: pre-line; font-size: 15px; }
+.sched-place { margin: 0; font-size: 14px; color: var(--ink-2); }
+.sched-links { display: flex; flex-wrap: wrap; gap: 6px; }
+.sched-link {
+  display: inline-flex; align-items: center; min-height: 40px; padding: 6px 14px; border-radius: 999px;
+  border: 1.5px solid var(--sea); color: var(--sea); font-size: 14px; font-weight: 700; text-decoration: none;
+}
+.sched-link:active { background: var(--mist); }
+.sched-more li { display: block; padding: 0; } /* .sched li 타임라인 규칙 무효화 */
+.course { display: grid; gap: 10px; }
+.course-seg { grid-template-columns: repeat(4, 1fr); }
+.course-map { margin: 0 -12px; overflow: hidden; background: #a6d2f2; } /* 카드 폭 끝까지 */
+.course-map svg { display: block; width: 100%; height: auto; cursor: zoom-in; }
+.course-map.big { overflow-x: auto; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; }
+.course-map.big svg { width: 220%; max-width: none; cursor: zoom-out; }
+.course-cap { margin-top: -4px; text-align: right; font-size: 12px; }
+.course-case, .course-line, .course-dash { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.course-case { stroke: #fff; stroke-width: 13; }
+.course-line { stroke-width: 7; }
+.course-leg.cable .course-line { stroke-dasharray: 14 9; stroke-linecap: butt; }
+.course-dash { stroke: #fff; stroke-width: 2.2; stroke-dasharray: 7 7; stroke-linecap: butt; } /* 버스: 도로 중앙선 */
+.course-pill { fill: #fff; stroke-width: 2.5; }
+.course-name { font-size: 26px; font-weight: 800; fill: var(--ink); }
+.course-sub { font-size: 18px; font-weight: 700; fill: var(--ink-2); }
+.course-pin { stroke: #fff; stroke-width: 4; }
+.course-no { font-size: 19px; font-weight: 900; fill: #fff; text-anchor: middle; }
+.course-emoji { font-size: 22px; text-anchor: middle; }
+.course-text { font-size: 21px; font-weight: 800; fill: var(--sea-deep); paint-order: stroke; stroke: #fff; stroke-width: 5px; stroke-linejoin: round; }
+.course-title { margin: 4px 0 0; display: flex; align-items: center; gap: 6px; font-size: 15px; font-weight: 800; }
+.course-title i {
+  flex: none; display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%;
+  background: var(--c); color: #fff; font-style: normal; font-size: 13px; font-weight: 900;
+}
+.course-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.course-list .course-title { width: 100%; min-height: 44px; margin: 0; padding: 8px 10px; border: 1.5px solid var(--line); border-radius: var(--r-s); background: var(--paper); text-align: left; }
+.course-steps { list-style: none; margin: 0; padding: 0 0 0 10px; border-left: 3px solid var(--c); display: grid; gap: 4px; font-size: 14px; }
+.course-steps li { display: grid; grid-template-columns: 44px 1fr; gap: 6px; }
+.course-steps b { color: var(--c); font-variant-numeric: tabular-nums; }

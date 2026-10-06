@@ -1,6 +1,6 @@
 'use client';
 import { useMemo, useState } from 'react';
-import { MAPS } from '@/lib/marble/engine';
+import { stageOf } from '@/lib/marble/engine';
 import { gameLabel, roundEnded } from '@/lib/games';
 import { RULES, finalPrizes } from '@/lib/prizes';
 import { serverNow, useNow } from '@/lib/time';
@@ -8,6 +8,7 @@ import { useWakeLock } from '@/lib/ui';
 import MarbleStage from './MarbleStage';
 import WheelStage from './WheelStage';
 import LadderStage from './LadderStage';
+import LadderPick from './LadderPick';
 import ReactionLive, { Podium, ReactionResult } from './ReactionLive';
 
 // 🔴 LIVE 화면 (게임 탭 + 관리자 패널 미리보기 공용)
@@ -18,6 +19,8 @@ export default function LiveView({ live, meId, room }) {
 
   if (!onAir) return <Waiting last={roundEnded(round, now) ? round : null} meId={meId} room={room} />;
   if (round.state === 'PREPARING') {
+    // 🪜 사다리: 번호 고르기(PICK) → 마감 후 계산 대기(CLOSED)
+    if (round.game_type === 'ladder' && round.live?.phase) return <LadderPick key={round.id} round={round} meId={meId} />;
     return (
       <div className="live-wait">
         <p className="live-badge">🔴 LIVE</p>
@@ -53,7 +56,7 @@ function Replay({ round, track, meId, room }) {
     <div className="stack">
       <p className="live-title">
         <span className="live-badge">🔴 LIVE</span> {gameLabel(g)}
-        {g === 'marble' && ` · ${MAPS[meta.map]?.title}`}
+        {g === 'marble' && ` · ${stageOf(meta)?.title}`}
       </p>
       {g === 'marble' && <MarbleStage {...common} track={track} final={round.opts?.final || 0} />}
       {g === 'wheel' && <WheelStage {...common} />}
@@ -141,7 +144,7 @@ function Waiting({ last, meId, room }) {
       <section className="panel">
         <h3>🎁 특별상품 (FINAL)</h3>
         <ul className="prizes">
-          {finalPrizes(room?.shoot_pick).map(([icon, rank, nm]) => <li key={rank}><span>{icon} {rank}</span>{nm}</li>)}
+          {finalPrizes(room).map(([icon, rank, nm]) => <li key={rank}><span>{icon} {rank}</span>{nm}</li>)}
         </ul>
         <h3>🎁 자유 선택 상품</h3>
         <p className="hint">당첨 시 공개 (순위대로 선택)</p>

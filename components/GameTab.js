@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { MAPS, decode } from '@/lib/marble/engine';
 import { GAMES, prepareRound } from '@/lib/games';
 import { randomSeed } from '@/lib/rng';
+import { colsWith } from '@/lib/ladder/plan';
 import { toast } from '@/lib/ui';
 import LiveView, { ResultView } from './LiveView';
 import MarbleStage from './MarbleStage';
@@ -30,12 +31,15 @@ function Practice({ people, meId }) {
   const [game, setGame] = useState('marble');
   const [sel, setSel] = useState(() => new Set(people.map(p => p.id))); // 기본: 전원
   const [map, setMap] = useState(0);
+  const [lane, setLane] = useState(-1);   // 🪜 내 출발 번호 (0-based, -1 = 랜덤)
   const [run, setRun] = useState(null);   // { round, meta, track, names, startAt }
   const [ended, setEnded] = useState(false);
   const [busy, setBusy] = useState(false);
   const abort = useRef(null);
   useEffect(() => () => abort.current?.abort(), []); // 화면을 떠나면 시뮬레이션 중단
   const players = people.filter(p => sel.has(p.id));
+  const meIdx = players.findIndex(p => p.id === meId);
+  const myLane = game === 'ladder' && meIdx >= 0 && lane < players.length ? lane : -1; // 인원이 줄면 랜덤으로
 
   const start = async () => {
     if (players.length < 2) return toast('2명 이상 선택하세요');
@@ -44,7 +48,7 @@ function Practice({ people, meId }) {
     setBusy(true); setRun(null); setEnded(false);
     try {
       const names = players.map(p => p.name);
-      const opts = game === 'marble' ? { map } : {};
+      const opts = game === 'marble' ? { map } : myLane >= 0 ? { cols: colsWith(players.length, meIdx, myLane) } : {};
       const { meta, data } = await prepareRound(game, names, randomSeed(), { ...opts, signal: abort.current.signal });
       const round = { game_type: game, players, meta, result: meta.ranking.map(i => players[i].id), opts: {}, turn: null };
       setRun({ round, meta, track: game === 'marble' ? decode(data, meta) : null, names, startAt: Date.now() + 3500 });
@@ -89,6 +93,15 @@ function Practice({ people, meId }) {
             </div>
           )}
           <PeoplePicker people={people} sel={sel} setSel={setSel} />
+          {game === 'ladder' && meIdx >= 0 && (
+            <div className="field">
+              <label htmlFor="plane">내 출발 번호</label>
+              <select id="plane" className="input" value={myLane} disabled={busy} onChange={e => setLane(+e.target.value)}>
+                <option value={-1}>랜덤</option>
+                {players.map((_, c) => <option key={c} value={c}>{c + 1}번</option>)}
+              </select>
+            </div>
+          )}
           <button className="btn primary" disabled={busy || players.length < 2} onClick={start}>{busy ? '준비 중…' : '▶️ 연습 시작'}</button>
         </>
       )}

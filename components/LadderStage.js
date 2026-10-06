@@ -25,6 +25,7 @@ function fit(s, em) {
   for (const ch of s) { if ((t += w(ch)) > em) break; out += ch; }
   return out + '…';
 }
+const noEm = k => String(k).length * 0.5 + 0.3; // 칩 앞 출발 번호(12px) + 띄어쓰기 폭, 이름 글자(em) 기준
 
 // lanePath의 d("M x yL x y…") → 꺾은선, 그리고 그 위 거리 t 지점
 const polyline = d => d.slice(1).split('L').map(s => s.split(' ').map(Number));
@@ -175,7 +176,9 @@ function Board({ b, meta, names, inv, me, fin, ended, laneRef, headRef, underRef
         return (
           <g key={c} className={`ladder-chip${p === me ? ' me' : ''}`}>
             <rect x={round(x - lw / 2)} y={y} width={round(lw)} height={CHIP_HEIGHT} rx="8" style={{ stroke: hue(p) }} />
-            <text x={round(x)} y={y + CHIP_HEIGHT / 2} dy=".35em">{fit(names[p] ?? '', (lw - 12) / NAME_PX)}</text>
+            <text x={round(x)} y={y + CHIP_HEIGHT / 2} dy=".35em">
+              <tspan className="ladder-no">{c + 1}</tspan> {fit(names[p] ?? '', (lw - 12) / NAME_PX - noEm(c + 1))}
+            </text>
           </g>
         );
       })}
@@ -184,11 +187,12 @@ function Board({ b, meta, names, inv, me, fin, ended, laneRef, headRef, underRef
         return <circle key={i} ref={el => { headRef.current[i] = el; }} className={`ladder-head${i === me ? ' me' : ''}`}
           r={i === me ? 9 : 6} fill={hue(i)} transform={`translate(${x} ${y})`} />;
       })}
-      {meta.ranking.map((p, j) => {
-        const x = g.x(j), y = round(g.flapTop(j)), isFin = j >= n - fin;
+      {inv.map((_, c) => { // 도착 칸 c의 순위 j (slot 없으면 왼쪽부터 1위)
+        const j = meta.slot ? meta.slot[c] : c, p = meta.ranking[j];
+        const x = g.x(c), y = round(g.flapTop(c)), isFin = j >= n - fin;
         const tag = isFin ? '⚡FINAL' : `${j + 1}위`;
         return (
-          <g key={j} className={`ladder-flap${isFin ? ' fin' : ''}${ended && p === me ? ' me' : ''}`}>
+          <g key={c} className={`ladder-flap${isFin ? ' fin' : ''}${ended && p === me ? ' me' : ''}`}>
             <rect x={round(x - fw / 2)} y={y} width={round(fw)} height={FLAP_HEIGHT} rx="6" style={ended ? { stroke: hue(p) } : undefined} />
             {ended ? (
               <>

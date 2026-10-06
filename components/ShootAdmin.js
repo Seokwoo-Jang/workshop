@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { rpc } from '@/lib/supabase';
-import { PICKS } from '@/lib/prizes';
+import { picksOf } from '@/lib/prizes';
 import { shootBoard } from '@/lib/shoot';
 
 // 🎯 관리자: 점수 입력/수정, 공동 1·2·3위 재사격(2차전) 맞힌 수 입력, 1위 선택 상품. 게임과 연동 없음
@@ -51,7 +51,7 @@ export default function ShootAdmin({ A, room, people, scores, run }) {
         <label htmlFor="spick">🥇 사격 1위가 고른 상품 (남은 것이 FINAL 1위 상품으로 표시)</label>
         <select id="spick" className="input" value={room.shoot_pick || ''} onChange={e => setPick(e.target.value)}>
           <option value="">미정</option>
-          {PICKS.map(k => <option key={k} value={k}>{k}</option>)}
+          {picksOf(room).map(k => <option key={k} value={k}>{k}</option>)}
         </select>
       </div>
     </section>

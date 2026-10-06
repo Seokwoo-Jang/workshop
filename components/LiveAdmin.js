@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { rpc } from '@/lib/supabase';
 import { MAPS } from '@/lib/marble/engine';
 import { GAMES, gameLabel, prepareRound, roundEnded } from '@/lib/games';
@@ -11,6 +11,7 @@ import { ReactionAdmin } from './ReactionLive';
 
 // 🎮 게임 선택 → 👥 참가자 선택 → ▶️ LIVE START
 // 구슬·돌림판·사다리: 서버 seed로 이 기기에서 1회 계산 → 업로드 → 전원 동시 재생 (결과는 재생 끝까지 비공개)
+// 사다리는 먼저 각자 출발 번호 고르기 → [선택 마감] 때 서버가 남은 번호 배정 + seed 확정 → 계산·업로드
 // 반응속도: START 즉시 첫 플레이어부터 본게임 3판 (순서는 서버가 무작위, 측정은 플레이어 폰. 연습은 각자 연습 탭)
 export default function LiveAdmin({ A, sess, room, people, live, ask, reload, onAdminExpired }) {
   const [game, setGame] = useState('marble');
@@ -22,6 +23,7 @@ export default function LiveAdmin({ A, sess, room, people, live, ask, reload, on
   const players = people.filter(p => sel.has(p.id));
   const { round, onAir } = live;
   const preparing = onAir && round.state === 'PREPARING';
+  const picking = preparing && round.game_type === 'ladder' && round.live?.phase === 'PICK'; // 🪜 번호 고르는 중
 
   const fail = e => {
     toast(e.message || '처리하지 못했습니다');
@@ -47,7 +49,7 @@ export default function LiveAdmin({ A, sess, room, people, live, ask, reload, on
     const names = players.map(p => p.name);
     const fl = opts.prizes ? '🏆 FINAL 백업 시상' : opts.final ? `하위 ${opts.final}명 FINAL 진출` : '';
     const extra = game === 'marble' ? `\n${fl ? `${fl} · ` : ''}${MAPS[map].title}`
-      : game === 'ladder' ? (fl ? `\n${fl}` : '')
+      : game === 'ladder' ? `${fl ? `\n${fl}` : ''}\n참가자가 각자 폰에서 출발 번호를 고릅니다 (마감 때 남은 번호는 무작위)`
       : game === 'wheel' ? ''
       : '\n바로 본게임 3판 시작 (순서는 서버가 무작위로 정함)';
     if (!(await ask(`${gameLabel(game)}\n선택된 참가자 ${n}명: ${names.join(', ')}${extra}\n시작할까요?`, '▶️ START'))) return;
@@ -56,6 +58,8 @@ export default function LiveAdmin({ A, sess, room, people, live, ask, reload, on
       const r = await rpc('admin_live_start', { p_admin: A, p_game: game, p_players: players.map(p => p.id), p_opts: opts });
       reload(['room']);
       if (game === 'reaction') toast('⚡ 반응속도 시작 — 첫 플레이어 본게임 1판');
+      // seed 0 = 서버가 번호 고르기(PICK) 라운드를 만듦. 예전 서버(migrate 전)는 진짜 seed → 바로 무작위 배치 업로드
+      else if (game === 'ladder' && Number(r.seed) === 0) toast('🪜 번호 고르기 시작 — 다 고르면 [선택 마감]');
       else await prepUpload({ id: r.id, game, seed: r.seed, names, opts });
     } catch (e) { fail(e); }
     setBusy(null);
@@ -63,8 +67,23 @@ export default function LiveAdmin({ A, sess, room, people, live, ask, reload, on
 
   // 업로드 실패 / 계산 중 패널 닫힘·기기 재시작 → 같은 라운드를 같은 seed로 다시
   const retry = async () => {
+    const cols = round.game_type === 'ladder' ? round.live?.cols : null; // 사다리: 마감 때 정한 출발 번호 그대로
     try {
-      await prepUpload({ id: round.id, game: round.game_type, seed: Number(round.seed), names: round.players.map(p => p.name), opts: round.opts });
+      await prepUpload({ id: round.id, game: round.game_type, seed: Number(round.seed), names: round.players.map(p => p.name),
+        opts: cols ? { ...round.opts, cols } : round.opts });
+    } catch (e) { fail(e); }
+    setBusy(null);
+  };
+
+  // 🪜 번호 고르기 마감 → 서버가 남은 번호 무작위 배정 + seed 확정 → 이 기기에서 계산·업로드 (실패하면 위 재시도)
+  const closePick = async () => {
+    const left = round.players.filter(p => round.live?.picks?.[p.id] === undefined).length;
+    if (!(await ask(`번호 고르기를 마감하고 사다리를 시작할까요?${left ? `\n${left}명 미선택 → 남은 번호 무작위 배정` : ''}`, '🪜 마감 → 시작'))) return;
+    setBusy('마감 중…');
+    try {
+      const r = await rpc('admin_ladder_close', { p_admin: A, p_round: round.id });
+      await prepUpload({ id: round.id, game: 'ladder', seed: Number(r.seed), names: round.players.map(p => p.name),
+        opts: { ...round.opts, cols: r.cols } });
     } catch (e) { fail(e); }
     setBusy(null);
   };
@@ -86,7 +105,8 @@ export default function LiveAdmin({ A, sess, room, people, live, ask, reload, on
           <div className="preview"><LiveView live={live} meId={sess.participant_id} room={room} /></div>
           {round.state === 'PLAYING' && (round.game_type === 'marble' || round.game_type === 'ladder') && !round.opts?.prizes && <DrawTurn A={A} round={round} fail={fail} />}
           {round.state === 'PLAYING' && round.game_type === 'reaction' && <ReactionAdmin A={A} round={round} ask={ask} fail={fail} />}
-          {preparing && !busy && (
+          {picking && <LadderPickAdmin A={A} round={round} fail={fail} busy={busy} onClose={closePick} />}
+          {preparing && !picking && !busy && (
             <>
               <p className="hint">결과 계산/업로드가 끝나지 않은 라운드입니다. 같은 seed로 다시 시도하면 결과는 그대로입니다.</p>
               <button className="btn sun" onClick={retry}>🔁 같은 seed로 다시 업로드</button>
@@ -126,7 +146,7 @@ export default function LiveAdmin({ A, sess, room, people, live, ask, reload, on
           </div>
         </div>
       )}
-      {(game === 'marble' || game === 'ladder') && <p className="hint">FINAL 인원: {game === 'marble' ? '마지막에 도착한' : '사다리 맨 오른쪽'} N명이 FINAL 진출 (0이면 전체 순위)</p>}
+      {(game === 'marble' || game === 'ladder') && <p className="hint">FINAL 인원: {game === 'marble' ? '마지막에 도착한' : '사다리 ⚡FINAL 칸에 도착한'} N명이 FINAL 진출 (0이면 전체 순위)</p>}
       {(game === 'marble' || game === 'ladder') && (
         <label className="check">
           <input type="checkbox" checked={prizes} onChange={e => setPrizes(e.target.checked)} />
@@ -139,7 +159,7 @@ export default function LiveAdmin({ A, sess, room, people, live, ask, reload, on
       <button className="btn primary" disabled={!!busy || preparing || players.length < 2 || (game === 'reaction' && players.length > 8)} onClick={start}>
         {busy || '▶️ LIVE START'}
       </button>
-      {preparing && !busy && <p className="hint">준비 중인 라운드가 있으면 START할 수 없습니다 (다시 업로드 또는 송출 종료)</p>}
+      {preparing && !busy && <p className="hint">준비 중인 라운드가 있으면 START할 수 없습니다 ({picking ? '선택 마감' : '다시 업로드'} 또는 송출 종료)</p>}
       {onAir && !preparing && <p className="hint">START하면 지금 송출 중인 화면이 새 라운드로 바뀝니다</p>}
     </section>
   );
@@ -167,6 +187,51 @@ function DrawTurn({ A, round, fail }) {
         <button className="btn primary" disabled={t >= picks.length} onClick={() => set(t + 1)}>다음 ▶</button>
       </div>
       <button className="btn ghost small" onClick={() => set(null)}>순번 안내 끄기</button>
+    </div>
+  );
+}
+
+// 🪜 번호 고르기 진행: 선택 현황 + 폰을 못 보는 사람 대신 번호 지정 + 선택 마감
+function LadderPickAdmin({ A, round, fail, busy, onClose }) {
+  const picks = round.live?.picks || {};
+  const key = JSON.stringify(picks);
+  const [ov, setOv] = useState({}); // 방금 바꾼 칸 (서버 상태가 오면 비움)
+  useEffect(() => setOv({}), [key]);
+  const n = round.players.length;
+  const name = Object.fromEntries(round.players.map(p => [p.id, p.name]));
+  const holder = Object.fromEntries(Object.entries(picks).map(([id, c]) => [c, id])); // 번호 → 참가자 id
+  const left = round.players.filter(p => picks[p.id] === undefined);
+
+  const set = async (id, v) => {
+    setOv(o => ({ ...o, [id]: v }));
+    try {
+      await rpc('admin_ladder_pick', { p_admin: A, p_round: round.id, p_user: id, p_lane: v === '' ? null : +v });
+    } catch (e) {
+      setOv(o => { const x = { ...o }; delete x[id]; return x; });
+      fail(e);
+    }
+  };
+
+  return (
+    <div className="stack">
+      <p className="turn">🪜 번호 선택 <b>{n - left.length}</b> / {n}명</p>
+      {left.length > 0 && <p className="hint">미선택: {left.map(p => p.name).join(', ')}</p>}
+      <ul className="admin-list">
+        {round.players.map(p => (
+          <li key={p.id}>
+            <span className="grow">{p.name}</span>
+            <select className="input lane-sel" aria-label={`${p.name} 출발 번호`} disabled={!!busy}
+              value={ov[p.id] ?? picks[p.id] ?? ''} onChange={e => set(p.id, e.target.value)}>
+              <option value="">미선택</option>
+              {[...Array(n).keys()].map(c => {
+                const h = holder[c];
+                return <option key={c} value={c} disabled={!!h && h !== p.id}>{c + 1}번{h && h !== p.id ? ` (${name[h]})` : ''}</option>;
+              })}
+            </select>
+          </li>
+        ))}
+      </ul>
+      <button className="btn primary" disabled={!!busy} onClick={onClose}>🪜 선택 마감 → 사다리 시작</button>
     </div>
   );
 }

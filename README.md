@@ -1,6 +1,6 @@
 # 2026 IP TEAM WORKSHOP
 
-이름 입력 입장 · 버스 좌석 예약 · 🎯 사격 순위 · 일정 · 사진 링크 · 관리자 모드(PIN).
+이름 입력 입장 · 버스 좌석 예약 · 🎯 사격 순위 · 일정(상세·지도 링크·제부도 추천코스) · 사진 링크 · 관리자 모드(PIN).
 🎮 게임 (🔴 LIVE 송출 / 🕹 연습): 🎱 구슬 레이스 · ⚡ 반응속도 FINAL · 🎡 돌림판 · 🪜 사다리타기 · 📢 선택 순번 안내.
 방은 1개.
 
@@ -13,6 +13,10 @@
 3. SQL Editor → schema.sql 전체 붙여넣고 Run
 4. 프로젝트 화면 맨 위 **Connect** → Next.js 선택 → `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` 두 줄 복사
    (또는 Project Settings → API Keys 의 Publishable key / legacy anon key. **secret·service_role 키는 절대 쓰지 말 것**)
+
+이미 schema.sql로 만든 DB(v1)는 **새 프론트 배포 전에** SQL Editor → `supabase/migrate_v2.sql` 전체 붙여넣고 Run 1회
+(일정 상세·지도 링크, 🎁 경품 이름, 🪜 사다리 번호 고르기. 한 트랜잭션이라 실패하면 아무것도 안 바뀜, 다시 실행해도 안전.
+참가자·좌석·점수·PIN은 그대로. 준비 중인 🪜 사다리 라운드가 있으면 송출 종료 후 다시 START). 새로 설치할 때는 schema.sql만.
 
 PIN 변경은 SQL Editor에서:
 ```sql
@@ -55,7 +59,17 @@ npm run dev                  # http://localhost:3000
 - 🎯 사격: 관리자 패널 `🎯 사격 점수`에 입력 → 사격 탭에 순위 자동 정렬 (🥇🥈🥉, 동점은 '공동 n위', 최저점 💩 표시만)
   - 공동 1·2·3위 → 현장 재사격 → 맞힌 수를 '2차전' 칸에 입력 (빈칸 = 2차전 안 함). 앱은 순위만 보여주고 게임과 연동하지 않음
   - `사격 1위가 고른 상품` 입력 → 남은 상품이 FINAL 1위 상품으로 표시
+- 🎁 경품 이름: 관리자 ⚙️ → `🎁 경품 이름`에서 수정 → 모든 화면에 바로 반영
+  - FINAL 3위는 `??? 상품권 (10만원 상당)`으로 두었다가 시상 때 실제 이름으로 바꾸기
+  - 사격 1위가 이미 고른 상품은 같은 자리(A/B)의 새 이름으로 따라감. 전체 초기화해도 경품 이름은 유지
 - 🎡 돌림판: 관리자가 대상자 이름을 직접 골라 LIVE로 돌림 → 1명 당첨 (꼴찌 동점 결정도 동일, 사격 순위와 연동 없음)
+- 🪜 사다리 LIVE: START → 참가자가 각자 폰에서 출발 번호 고르기 (빈 번호 탭 = 선택/이동, 내 번호 다시 탭 = 취소)
+  - 폰을 못 보는 사람은 관리자 패널에서 대신 지정. 같은 번호 동시 선택은 서버에서 한 명만
+  - `🪜 선택 마감 → 사다리 시작` → 안 고른 사람은 남은 번호 무작위 + 이때 seed 확정 (고를 때는 사다리 모양을 모름) → 계산·업로드 → 동시 재생
+  - 연습 탭에서는 `내 출발 번호`를 골라볼 수 있음 (기본 랜덤)
+- 📅 일정: 항목을 누르면 상세 + 네이버 지도 링크가 펼쳐짐. 16:00 자유시간은 제부도 추천코스 A/B/C 지도
+  - 관리자 ⚙️ → 일정에서 상세, 지도 링크(한 줄에 `라벨 | 주소`, 최대 4개), `🗺 제부도 추천코스 지도 표시` 수정
+  - 코스 경로·지점은 `lib/courses.js` (좌표 = `public/jebu-map.png` 픽셀)
 - ⚡ 반응속도 FINAL: FINAL 3명 선택 → START → 바로 첫 플레이어부터 본게임 3판 (순서는 서버가 무작위)
   - 연습은 각자 🎮 게임 > 🕹 연습에서 (LIVE 중에도 가능, 3판 평균으로 FINAL과 같은 방식)
   - 플레이어 폰은 자기 차례에 자동으로 풀스크린 (관리자 패널 위에도). `준비 완료` → 빨강 → 초록이면 탭
@@ -68,7 +82,8 @@ npm run dev                  # http://localhost:3000
 ## 구조
 
 ```
-supabase/schema.sql          테이블, RLS, RPC, 단일 방 SEED
+supabase/schema.sql          테이블, RLS, RPC, 단일 방 SEED (새로 설치)
+supabase/migrate_v2.sql      기존 DB(v1) → v2 (일정 상세, 경품 이름, 사다리 번호 고르기)
 .github/workflows/deploy.yml GitHub Pages 자동 배포
 lib/supabase.js              클라이언트 + RPC 에러 → 한국어 메시지
 lib/session.js               기기 ID, 세션 (localStorage)
@@ -77,16 +92,17 @@ lib/useRoom.js               데이터 로드 + Realtime + 복귀/20초 주기 �
 lib/seatLayout.js            28인승 배치 (실제 배치도 받으면 여기만 수정)
 lib/ui.js                    토스트, 확인 팝업, 화면 꺼짐 방지
 lib/useLive.js               LIVE 라운드 + 재생 데이터 (Realtime + 복귀/주기 재확인)
-lib/prizes.js                경품 / 시상 룰 문구 (사격 1위 선택 → FINAL 1위 상품)
+lib/prizes.js                경품 기본값 (rooms.prizes 없을 때) / 시상 룰 문구 (사격 1위 선택 → FINAL 1위 상품)
+lib/courses.js               📅 제부도 추천코스 A/B/C 지점·경로 (CourseMap이 지도 위에 그림), 지도 링크 입력 변환
 lib/games.js                 게임 목록, seed → 결과 계산(prepareRound), 종료 판정
 lib/shoot.js                 사격 순위 (공동 순위, 🥇🥈🥉💩)
-lib/marble/                  🎱 구슬 레이스: maps.js(원본 맵), engine.js(시뮬레이션·궤적), render.js(재생)
+lib/marble/                  🎱 구슬 레이스: fadu.js(FADU 맵, 0번), maps.js(원본 맵), engine.js(시뮬레이션·궤적), render.js(재생)
 lib/wheel/plan.js            🎡 seed → 당첨자·최종 각도 / lib/spin-wheel/ (원본 라이브러리)
-lib/ladder/                  🪜 plan.js(seed → 사다리·순위), whozzie.js(원본 사다리 생성·좌표)
+lib/ladder/                  🪜 plan.js(seed + 출발 번호 → 사다리·순위), whozzie.js(원본 사다리 생성·좌표)
 lib/reaction/core.js         ⚡ 판 이름, 기록판 집계
 app/page.js                  메인 (입장, 탭, 관리자 모드, LIVE 알림·[LIVE 보기], FINAL 플레이 화면)
-components/                  탭 화면, 관리자 패널 (LiveAdmin = 송출, LiveView = 관전)
-public/                      fadu-logo.png (헤더·입장 화면 로고)
+components/                  탭 화면, 관리자 패널 (LiveAdmin = 송출, LiveView = 관전, LadderPick = 사다리 번호 고르기, PrizeAdmin = 경품 이름)
+public/                      fadu-logo.png (헤더·입장 화면 로고), jebu-map.png (제부도 지도 캡처)
 ```
 
 ## 보안 모델
@@ -112,6 +128,9 @@ public/                      fadu-logo.png (헤더·입장 화면 로고)
 - [ ] 선택 순번 안내 다음/이전, 송출 종료 후 대기 화면
 - [ ] 사격 점수 입력 → 사격 탭 정렬·💩, 1위 상품 선택 → LIVE 대기 화면 FINAL 1위 상품 변경
 - [ ] 🎡 돌림판 2명 → 8칸 반복, 🪜 사다리 19명 가로 스크롤
+- [ ] 🪜 사다리 LIVE: 두 폰으로 같은 번호 동시 선택 → 한 명만, 관리자 대리 지정, 일부 미선택 상태로 마감 → 무작위 배정
+- [ ] 🎁 경품 이름 수정 → 사격 탭·LIVE 대기 화면 반영, 사격 1위 선택 후 이름 바꿔도 FINAL 1위 상품 유지
+- [ ] 📅 일정 펼치기, 네이버 지도 링크 (앱/브라우저), 추천코스 지도 확대
 - [ ] ⚡ 반응속도: 기기별 10판 편차 확인 (60/120Hz), 부정출발·앱 이탈 무효, 관리자 대신 시작/무효/스킵, 관리자 본인이 플레이어일 때
 - [ ] 리허설 끝나면 관리자 메뉴 → 전체 초기화
 
@@ -127,4 +146,4 @@ public/                      fadu-logo.png (헤더·입장 화면 로고)
   - 🪜 [zeikar/whozzie](https://github.com/zeikar/whozzie) 사다리 생성·경로·좌표 → `lib/ladder/whozzie.js`
   - ⚡ [SultanAni/reaction-time-game](https://github.com/SultanAni/reaction-time-game) 상태·색상 + [tarcisiozf/reaction-time](https://github.com/tarcisiozf/reaction-time) 원형 → `components/ReactionPad.js` (`lib/reaction/LICENSE`)
   - 스펙에 적힌 반응속도 repo 2개는 LICENSE 파일이 없어 사용하지 않음
-- 경품 문구는 `lib/prizes.js` 고정값 (상품이 바뀌면 여기만 수정)
+- 경품 이름은 관리자 화면에서 수정 (`lib/prizes.js`는 DB 마이그레이션 전 기본값). 시상 룰 문구는 `lib/prizes.js`

@@ -111,7 +111,7 @@ export function Podium({ round, room, meId, at, sub }) {
   const now = useNow(250);
   const name = Object.fromEntries(round.players.map(p => [p.id, p.name]));
   const ids = round.result || [];
-  const prizes = finalPrizes(room?.shoot_pick);
+  const prizes = finalPrizes(room);
   const top = ids.slice(0, 3);
   const shown = k => now >= at + (top.length - 1 - k) * REVEAL_GAP; // k=0(1위)이 마지막
   return (

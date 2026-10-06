@@ -1,5 +1,5 @@
 'use client';
-import { SHOOT_LAST, SHOOT_PRIZES } from '@/lib/prizes';
+import { shootLast, shootPrizes } from '@/lib/prizes';
 import { shootBoard } from '@/lib/shoot';
 
 // 🎯 사격 순위 (참가자는 관람만, 점수는 관리자 패널에서 입력). 순위만 보여주고 게임과 연동하지 않음
@@ -16,13 +16,13 @@ export default function ShootTab({ sess, room, people, scores }) {
       <section className="panel">
         <h3>🎁 사격 경품</h3>
         <ul className="prizes">
-          {SHOOT_PRIZES.map(([icon, rank, nm], i) => (
+          {shootPrizes(room).map(([icon, rank, nm], i) => (
             <li key={rank}>
               <span>{icon} {rank}</span>
               <span>{nm}{i === 0 && room.shoot_pick && <b className="pick"> → {room.shoot_pick} 선택</b>}</span>
             </li>
           ))}
-          <li><span>💩 꼴찌</span><span>{SHOOT_LAST}</span></li>
+          <li><span>💩 꼴찌</span><span>{shootLast(room)}</span></li>
         </ul>
       </section>
 
