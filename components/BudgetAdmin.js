@@ -39,6 +39,10 @@ export default function BudgetAdmin({ A, run, ask }) {
   const reserve = data.items.find(x => x.category === RESERVE);
   const others = sum(data.items.filter(x => x !== reserve), 'planned');
   const auto = data.total === null ? null : data.total - others;
+  // 예비비 실제 남은 금액 = 총예산 − 다른 항목(실제 지출, 없으면 예산) − 예비비 실제 사용. 초과분은 깎이고 절약분은 더해짐
+  const reserveLeft = reserve && data.total !== null
+    ? data.total - data.items.filter(x => x !== reserve).reduce((t, x) => t + (x.actual ?? x.planned ?? 0), 0) - (reserve.actual ?? 0)
+    : null;
   const items = data.items.map(x => (x === reserve ? { ...x, planned: auto, auto: true } : x));
   const planned = sum(items, 'planned'), actual = sum(items, 'actual');
   const left = data.total === null ? null : data.total - actual;
@@ -71,10 +75,11 @@ export default function BudgetAdmin({ A, run, ask }) {
     <section className="panel">
       <h3>💰 예산 <span className="badge">관리자만</span></h3>
 
-      <div className="budget-sum">
+      <div className={`budget-sum${reserve ? ' four' : ''}`}>
         <div><span>총예산 (고정)</span><b>{won(data.total)}</b></div>
         <div><span>실제 지출</span><b>{won(actual)}</b></div>
         <div className={left !== null && left < 0 ? 'over' : ''}><span>잔액</span><b>{won(left)}</b></div>
+        {reserve && <div className={reserveLeft !== null && reserveLeft < 0 ? 'over' : ''}><span>예비비 남음</span><b>{won(reserveLeft)}</b></div>}
       </div>
       {reserve && auto !== null && auto < 0 && (
         <p className="notice">예비비가 부족합니다 · 다른 항목 예산 합계가 총예산보다 {won(-auto)}원 많음</p>
@@ -111,7 +116,7 @@ export default function BudgetAdmin({ A, run, ask }) {
           <tr><td>합계</td><td>{subtotal(items, 'planned')}</td><td>{subtotal(items, 'actual')}</td><td>{items.filter(x => x.paid).length}/{items.length}</td></tr>
         </tfoot>
       </table>
-      <p className="hint">단위: 원 · 예비비 예산 = 총예산 − 다른 항목 예산 (자동) · 항목 이름을 누르면 아래에서 수정 · 실제 지출이 예산을 넘으면 빨간색</p>
+      <p className="hint">단위: 원 · 예비비 예산 = 총예산 − 다른 항목 예산 (자동) · 예비비 남음 = 총예산 − 다른 항목(실제 지출, 없으면 예산) − 예비비 사용 · 항목 이름을 누르면 아래에서 수정 · 실제 지출이 예산을 넘으면 빨간색</p>
 
       <div className="stack">
         <p className="hint" style={{ fontWeight: 700 }}>{f.id ? `'${f.name}' 수정` : '항목 추가'}</p>

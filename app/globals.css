@@ -518,6 +518,7 @@ details.panel summary { font-weight: 700; cursor: pointer; }
 .budget-sum span { font-size: 12px; color: var(--ink-2); }
 .budget-sum b { font-size: 16px; font-weight: 800; font-variant-numeric: tabular-nums; }
 .budget-sum .over b { color: var(--danger); }
+.budget-sum.four { grid-template-columns: repeat(2, 1fr); } /* 예비비 남음 카드까지 4개 → 2×2 */
 .budget-table { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
 .budget-table th { font-size: 12px; font-weight: 700; color: var(--ink-2); text-align: right; padding: 4px 4px 6px; border-bottom: 1px solid var(--line); white-space: nowrap; }
 .budget-table th:first-child, .budget-table td:first-child { text-align: left; }
